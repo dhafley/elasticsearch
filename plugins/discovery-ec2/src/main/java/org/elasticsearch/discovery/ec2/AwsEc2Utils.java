@@ -9,6 +9,8 @@
 package org.elasticsearch.discovery.ec2;
 
 import io.github.pixee.security.BoundedLineReader;
+import io.github.pixee.security.HostValidator;
+import io.github.pixee.security.Urls;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.Strings;
@@ -38,7 +40,7 @@ class AwsEc2Utils {
         return SocketAccess.doPrivileged(() -> {
             HttpURLConnection urlConnection;
             try {
-                urlConnection = (HttpURLConnection) new URL(metadataTokenUrl).openConnection();
+                urlConnection = (HttpURLConnection) Urls.create(metadataTokenUrl, Urls.HTTP_PROTOCOLS, HostValidator.DENY_COMMON_INFRASTRUCTURE_TARGETS).openConnection();
                 urlConnection.setRequestMethod("PUT");
                 urlConnection.setConnectTimeout(CONNECT_TIMEOUT);
                 urlConnection.setRequestProperty("X-aws-ec2-metadata-token-ttl-seconds", String.valueOf(METADATA_TOKEN_TTL_SECONDS));
