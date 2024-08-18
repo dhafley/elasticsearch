@@ -8,8 +8,10 @@
 
 package org.elasticsearch.plugins.cli;
 
+import io.github.pixee.security.BoundedLineReader;
 import io.github.pixee.security.HostValidator;
 import io.github.pixee.security.Urls;
+import io.github.pixee.security.ZipSecurity;
 import org.apache.lucene.search.spell.LevenshteinDistance;
 import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.Constants;
@@ -576,9 +578,9 @@ public class InstallPluginAction implements Closeable {
              */
             final BufferedReader checksumReader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
             if (digestAlgo.equals("SHA-1")) {
-                expectedChecksum = checksumReader.readLine();
+                expectedChecksum = BoundedLineReader.readLine(checksumReader, 5_000_000);
             } else {
-                final String checksumLine = checksumReader.readLine();
+                final String checksumLine = BoundedLineReader.readLine(checksumReader, 5_000_000);
                 final String[] fields = checksumLine.split(" {2}");
                 if (officialPlugin && fields.length != 2 || officialPlugin == false && fields.length > 2) {
                     throw new UserException(ExitCodes.IO_ERROR, "Invalid checksum file at " + checksumUrl);
@@ -600,7 +602,7 @@ public class InstallPluginAction implements Closeable {
                     }
                 }
             }
-            if (checksumReader.readLine() != null) {
+            if (BoundedLineReader.readLine(checksumReader, 5_000_000) != null) {
                 throw new UserException(ExitCodes.IO_ERROR, "Invalid checksum file at " + checksumUrl);
             }
         }
@@ -773,7 +775,7 @@ public class InstallPluginAction implements Closeable {
         final Path target = stagingDirectory(pluginsDir);
         pathsToDeleteOnShutdown.add(target);
 
-        try (ZipInputStream zipInput = new ZipInputStream(Files.newInputStream(zip))) {
+        try (ZipInputStream zipInput = ZipSecurity.createHardenedInputStream(Files.newInputStream(zip))) {
             ZipEntry entry;
             byte[] buffer = new byte[8192];
             while ((entry = zipInput.getNextEntry()) != null) {
