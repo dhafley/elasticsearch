@@ -8,6 +8,7 @@
 
 package org.elasticsearch.discovery.ec2;
 
+import io.github.pixee.security.BoundedLineReader;
 import io.github.pixee.security.HostValidator;
 import io.github.pixee.security.Urls;
 import org.apache.logging.log4j.LogManager;
@@ -51,7 +52,7 @@ class AwsEc2Utils {
                 var in = urlConnection.getInputStream();
                 var reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))
             ) {
-                return Optional.ofNullable(reader.readLine()).filter(s -> s.isBlank() == false);
+                return Optional.ofNullable(BoundedLineReader.readLine(reader, 5_000_000)).filter(s -> s.isBlank() == false);
             } catch (IOException e) {
                 logger.warn("Unable to get a session token from IMDSv2 URI: " + metadataTokenUrl, e);
                 return Optional.empty();
