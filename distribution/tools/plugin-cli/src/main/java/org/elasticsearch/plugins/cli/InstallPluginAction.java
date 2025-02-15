@@ -9,6 +9,9 @@
 package org.elasticsearch.plugins.cli;
 
 import io.github.pixee.security.BoundedLineReader;
+import io.github.pixee.security.HostValidator;
+import io.github.pixee.security.Urls;
+import io.github.pixee.security.ZipSecurity;
 import org.apache.lucene.search.spell.LevenshteinDistance;
 import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.Constants;
@@ -430,7 +433,7 @@ public class InstallPluginAction implements Closeable {
     @SuppressForbidden(reason = "Make HEAD request using URLConnection.connect()")
     boolean urlExists(String urlString) throws IOException {
         terminal.println(VERBOSE, "Checking if url exists: " + urlString);
-        URL url = new URL(urlString);
+        URL url = Urls.create(urlString, Urls.HTTP_PROTOCOLS, HostValidator.DENY_COMMON_INFRASTRUCTURE_TARGETS);
         assert "https".equals(url.getProtocol()) : "Only http urls can be checked";
         HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
         urlConnection.addRequestProperty("User-Agent", "elasticsearch-plugin-installer");
@@ -460,7 +463,7 @@ public class InstallPluginAction implements Closeable {
     @SuppressForbidden(reason = "We use getInputStream to download plugins")
     Path downloadZip(String urlString, Path tmpDir) throws IOException {
         terminal.println(VERBOSE, "Retrieving zip from " + urlString);
-        URL url = new URL(urlString);
+        URL url = Urls.create(urlString, Urls.HTTP_PROTOCOLS, HostValidator.DENY_COMMON_INFRASTRUCTURE_TARGETS);
         Path zip = Files.createTempFile(tmpDir, null, ".zip");
         URLConnection urlConnection = this.proxy == null ? url.openConnection() : url.openConnection(this.proxy);
         urlConnection.addRequestProperty("User-Agent", "elasticsearch-plugin-installer");
@@ -756,7 +759,7 @@ public class InstallPluginAction implements Closeable {
      */
     // pkg private for tests
     URL openUrl(String urlString) throws IOException {
-        URL checksumUrl = new URL(urlString);
+        URL checksumUrl = Urls.create(urlString, Urls.HTTP_PROTOCOLS, HostValidator.DENY_COMMON_INFRASTRUCTURE_TARGETS);
         HttpURLConnection connection = this.proxy == null
             ? (HttpURLConnection) checksumUrl.openConnection()
             : (HttpURLConnection) checksumUrl.openConnection(this.proxy);
@@ -772,7 +775,7 @@ public class InstallPluginAction implements Closeable {
         final Path target = stagingDirectory(pluginsDir);
         pathsToDeleteOnShutdown.add(target);
 
-        try (ZipInputStream zipInput = new ZipInputStream(Files.newInputStream(zip))) {
+        try (ZipInputStream zipInput = ZipSecurity.createHardenedInputStream(Files.newInputStream(zip))) {
             ZipEntry entry;
             byte[] buffer = new byte[8192];
             while ((entry = zipInput.getNextEntry()) != null) {

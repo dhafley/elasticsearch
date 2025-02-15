@@ -11,6 +11,8 @@ package org.elasticsearch.discovery.ec2;
 import com.amazonaws.util.EC2MetadataUtils;
 import com.amazonaws.util.json.Jackson;
 import io.github.pixee.security.BoundedLineReader;
+import io.github.pixee.security.HostValidator;
+import io.github.pixee.security.Urls;
 
 import org.elasticsearch.SpecialPermission;
 import org.elasticsearch.common.network.NetworkService;
@@ -141,7 +143,7 @@ public class Ec2DiscoveryPlugin extends Plugin implements DiscoveryPlugin, Reloa
         final URL url;
         final URLConnection urlConnection;
         try {
-            url = new URL(azMetadataUrl);
+            url = Urls.create(azMetadataUrl, Urls.HTTP_PROTOCOLS, HostValidator.DENY_COMMON_INFRASTRUCTURE_TARGETS);
             logger.debug("obtaining ec2 [placement/availability-zone] from ec2 meta-data url {}", url);
             urlConnection = SocketAccess.doPrivilegedIOException(url::openConnection);
             urlConnection.setConnectTimeout(2000);
